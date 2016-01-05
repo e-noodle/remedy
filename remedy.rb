@@ -43,7 +43,7 @@ ERROR: Unable to get Remedy endpoint or login details.
 Example config.yaml:
 
 ---
-remedy_host: 'remedy7prd.internal.company.com'
+remedy_url: 'https://remedy7prd.internal.company.com'
 user_account: 'remedy_userid'
 user_password: 'encryptedsecret'
 #user_passwd_enc: false # true by default
@@ -52,13 +52,27 @@ EOF
     exit 1
 end
 
-remedy_host   = env_config['remedy_host']
+remedy_url    = env_config['remedy_url']
+remedy_uri    = URI(remedy_url)
+remedy_host   = remedy_uri.host
 user_account  = env_config['user_account']
 user_password = env_config['user_password']
+
+cache_urls = { 
+   :incident         => { :cache_id => '5bf31a2a', :path => '/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/' },
+   :asset            => { :cache_id => 'afb483',   :path => '/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/' },
+   :change_request   => { :cache_id => '9d0040dc'  :path => '/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/' },
+   :override         => { :cache_id => 'fb8677ad', :path => '/arsys/forms/remedy7prd-arsys/AR+System+Customizable+Home+Page/Default+Administrator+View/' }
+}
 
 ##########################################
 # functions
 ##########################################
+
+def usage
+    puts "   usage:   #{__FILE__} <Incident Ref> <Asset CID> <Change Request ID>"
+    puts "   example: #{__FILE__} INC000088888888 itgsydsrv000 CRQ000000999999"    
+end
 
 def logger(msg, log_file = "remedy_script.log")
   IO.write(log_file,msg,mode: 'a')
@@ -156,7 +170,7 @@ def create_json_map(cache_id)
 end
 
 
-def search_crq_asset(sToken, monster, remedy_host, crq)
+def search_crq_asset(sToken, monster, remedy_uri, crq)
 
     timestamp_ms  = (Time.now.to_f * 1000).to_i
     data          = "502/GetQBETableEntryList/16/remedy7prd-arsys33/CHG:Infrastructure Change Classic17/Default User View4/102016/remedy7prd-arsys33/CHG:Infrastructure Change Classic0/1/01/02/0/0/2/0/2/0/2/0/65/6/7/30006007/30034008/100000019/3012669009/30172560010/100000018276/6/3/CRQ9/BMC.ASSET25/CHG:Infrastructure Change3/CRQ5/0 Yes15/${CRQ}20/6/1/41/41/41/41/61/40/9/3999900881/013/${timestamp_ms}27/Change ID*+=${CRQ}25/2/8/1000000110/100000018248/2/25/CHG:Infrastructure Change15/${CRQ}2/0/2/0/"
@@ -172,16 +186,16 @@ def search_crq_asset(sToken, monster, remedy_host, crq)
         'Accept-Encoding'           => 'gzip, deflate, sdch',
         'Accept-Language'           => 'en-US,en;q=0.8',
         'AtssoRedirectStatusCode'   => 278,
-        'AtssoReturnLocation'       => "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
+        'AtssoReturnLocation'       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
         'Connection'                => 'keep-alive',
         'Content-type'              => 'text/plain; charset=UTF-8',
-        'Host'                      => remedy_host,
-        'Referer'                   => "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
+        'Host'                      => remedy_uri.host,
+        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_urihost}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
         'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
     }
         
     search_crq_headers.reject!{ |k,v| k.to_s == 'Cookie' }
-    search_crq_url                          = "https://#{remedy_host}/arsys/BackChannel/"
+    search_crq_url                          = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
     search_crq_uri                          = URI(search_crq_url)
     search_crq_https                        = Net::HTTP.new(search_crq_uri.host, search_crq_uri.port)
     search_crq_https.use_ssl                = true
@@ -213,7 +227,7 @@ def search_crq_asset(sToken, monster, remedy_host, crq)
 end
 
 
-def search_ci_asset(sToken, monster, remedy_host, asset)
+def search_ci_asset(sToken, monster, remedy_uri, asset)
 
     timestamp_ms  = (Time.now.to_f * 1000).to_i
     data      = %q[344/GetQBETableEntryList/16/remedy7prd-arsys18/AST:ComputerSystem10/Management4/102016/remedy7prd-arsys18/AST:ComputerSystem0/1/01/02/0/0/2/0/2/0/2/0/59/5/7/30001009/2000000209/40012740010/100000512410/100000512563/5/18/BMC_COMPUTERSYSTEM12/${CI_ASSET}9/BMC.ASSET5/180005/1800017/5/1/41/41/41/71/70/9/3009073001/013/${timestamp_ms}0/2/0/2/0/2/0/2/0/]
@@ -230,16 +244,16 @@ def search_ci_asset(sToken, monster, remedy_host, asset)
         'Accept-Encoding'           => 'gzip, deflate, sdch',
         'Accept-Language'           => 'en-US,en;q=0.8',
         'AtssoRedirectStatusCode'   => '278',
-        'AtssoReturnLocation'       => "https://#{}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
+        'AtssoReturnLocation'       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
         'Connection'                => 'keep-alive',
         'Content-type'              => 'text/plain; charset=UTF-8',
-        'Host'                      => remedy_host,
-        'Referer'                   => "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
+        'Host'                      => remedy_uri.host,
+        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
         'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
     }
 
     search_ci_headers.reject!{ |k,v| k.to_s == 'Cookie' }
-    search_ci_url                           = "https://#{remedy_host}/arsys/BackChannel/"
+    search_ci_url                           = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
     search_ci_uri                           = URI(search_ci_url)
     search_ci_https                         = Net::HTTP.new(search_ci_uri.host, search_ci_uri.port)
     search_ci_https.use_ssl                 = true
@@ -268,7 +282,7 @@ def search_ci_asset(sToken, monster, remedy_host, asset)
 end
 
 
-def search_incident(sToken, monster, remedy_host, incident)
+def search_incident(sToken, monster, remedy_uri, incident)
 
     inc_number                  = incident
     search_inc_request_headers  = {}
@@ -287,7 +301,7 @@ def search_incident(sToken, monster, remedy_host, incident)
 
     # http connectors
      
-    search_inc_url                   = "https://#{remedy_host}/arsys/BackChannel/"
+    search_inc_url                   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
     search_inc_uri                   = URI(search_inc_url)
     search_inc_https                 = Net::HTTP.new(search_inc_uri.host, search_inc_uri.port)
     search_inc_https.use_ssl         = true
@@ -297,7 +311,7 @@ def search_incident(sToken, monster, remedy_host, incident)
     # set headers
     
     headers_defaults = {  
-        'Origin'                  => "https://#{remedy_host}",
+        'Origin'                  => "#{remedy_uri.scheme}://#{remedy_uri.host}",
         'Host'                    => remedy_host,
         'Accept-Encoding'         => 'gzip, deflate',
         'Accept-Language'         => 'en-US,en;q=0.8',
@@ -306,12 +320,12 @@ def search_incident(sToken, monster, remedy_host, incident)
     }
 
     search_inc_request_headers_add = {  
-        'AtssoReturnLocation'     => "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
+        'AtssoReturnLocation'     => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
         'Content-type'            => "text/plain; charset=UTF-8",
         'Accept'                  => '*/*',
         'Accept-Language'         => 'en-US,en;q=0.8',
         'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
-        'Referer'                 => "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
+        'Referer'                 => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
         'AtssoRedirectStatusCode' => 278,
         'Cookie'                  => monster.get_cookie_header(search_inc_uri)
     }
@@ -340,23 +354,21 @@ def search_incident(sToken, monster, remedy_host, incident)
 end
 
 
-def check_remedy_result(response, sToken, monster)
+def check_remedy_result(response, sToken, monster, remedy_uri)
     unless response =~ /this\.result\=/
-    
       case response =~ /(retry\=this\.Override)|(urWFC\.status)/
-          when /urWFC\.status/
-            puts "urWFC.status\n#{$1}"
-          when /retry\=this\.Override/
-            puts "retry\=this\.Override\n#{$1}"
-          else 
-            case response
-                when /User\ is\ currently\ connected\ from\ another/
-                  override_login(sToken, "https://remedy7prd.internal.macquarie.com/arsys/forms/remedy7prd-arsys/AR+System+Customizable+Home+Page/Default+Administrator+View/?cacheid=fb8677ad" ,monster)
-                  puts "Error: User\ is\ currently\ connected\ from\ another session. Please try again"
-                  exit 1
-                end
-                
-          end
+      when /urWFC\.status/
+        puts "urWFC.status\n#{$1}"
+      when /retry\=this\.Override/
+        puts "retry\=this\.Override\n#{$1}"
+      else 
+        case response
+        when /User\ is\ currently\ connected\ from\ another/
+          override_login(sToken, "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/AR+System+Customizable+Home+Page/Default+Administrator+View/?cacheid=fb8677ad" ,monster)
+          puts "Error: User\ is\ currently\ connected\ from\ another session. Please try again"
+          exit 1
+        end
+      end
     end
 end
 
@@ -474,7 +486,7 @@ end
 
 # check login to remedy
 
-login_url                   = "https://#{remedy_host}/arsys/shared/login.jsp?/arsys/home/"
+login_url                   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/shared/login.jsp?/arsys/home/"
 login_uri                   = URI(login_url)
 
 monster                     = CookieMonster.new
@@ -499,7 +511,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
 
     # attempt to login with user account web form
 
-    user_login_url                   = "https://#{remedy_host}/arsys/servlet/LoginServlet"
+    user_login_url                   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/servlet/LoginServlet"
     user_login_uri                   = URI(user_login_url)
     user_login_https                 = Net::HTTP.new(user_login_uri.host, user_login_uri.port)
     user_login_https.use_ssl         = true
@@ -518,7 +530,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
         'Content-Type'                  => 'application/x-www-form-urlencoded',
         'Accept'                        => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Cache-Control'                 =>'max-age=0',
-        'Referer'                       => "https://#{remedy_host}/arsys/shared/login.jsp?/arsys/",
+        'Referer'                       => "#{remedy_uri.scheme}://#{remedy_host}/arsys/shared/login.jsp?/arsys/",
         'Connection'                    => 'keep-alive',
     }
 
@@ -601,7 +613,7 @@ if session.session_id.nil?
     }
     
     sToken      = nil
-    token_url   = "https://#{remedy_host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
+    token_url   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
 
     handle      = Url.new
     resp_t      = handle.get(token_url, token_headers , monster )
@@ -627,63 +639,60 @@ end
 # check input arguments are correct
 
 if ARGV.reject{ |input| input.match(/INC|itg|bfs|uhkg|CRQ/)}.size > 0
-    puts "   usage:   #{__FILE__} <Incident Ref> <Asset CID> <Change Request ID>"
-    puts "   example: #{__FILE__} INC000088888888 itgsydsrv000 CRQ000000999999"    
+    usage
     exit 1
 end
-
 
 ARGV.each{|a| 
 
   case a.to_s
   when /INC/
-    incident                       = a.to_s
+    incident = a.to_s
     
     # download cache maps
-    download_cache("https://remedy7prd.internal.macquarie.com/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a", monster) 
-    json_map_inc                = create_json_map("5bf31a2a")
+    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:incident][:path]}?cacheid=#{cache_urls[:incident][:cache_id]}", monster) 
+    json_map_inc                   = create_json_map( cache_urls[:incident][:cache_id] )
     
     #search & check result
-    inc_res_out                 = search_incident(sToken, monster, remedy_host, incident) 
-    check_remedy_result(inc_res_out, sToken, monster)
+    inc_res_out                    = search_incident(sToken, monster, remedy_uri, incident) 
+    check_remedy_result(inc_res_out, sToken, monster, remedy_uri)
     
     # display result
     results_array_inc              = get_array_from_response(inc_res_out.remove_non_ascii)
-    results_array_mapped_inc     = map_results_array(results_array_inc, json_map_inc)
+    results_array_mapped_inc       = map_results_array(results_array_inc, json_map_inc)
     filter_results_and_print(results_array_mapped_inc, incident)
     
   when /itg|bfs|uhkg/
-    asset_ci            = a.to_s
+    asset_ci = a.to_s
     
     # download cache maps
-    download_cache("https://#{remedy_host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483", monster)
-    json_map_ci         = create_json_map("afb483") 
+    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}", monster) 
+    json_map_ci                   = reate_json_map( cache_urls[:asset][:cache_id] )
     
     #search & check result
-    ci_res_out          = search_ci_asset(sToken, monster, remedy_host, asset_ci)
-    check_remedy_result(ci_res_out, sToken, monster)
+    ci_res_out                    = search_ci_asset(sToken, monster, remedy_uri, asset_ci)
+    check_remedy_result(ci_res_out, sToken, monster, remedy_uri)
     
-    results_array_ci    = get_array_from_response(ci_res_out)
-    results_array_mapped_ci = map_results_array(results_array_ci, json_map_ci)
+    results_array_ci              = get_array_from_response(ci_res_out)
+    results_array_mapped_ci       = map_results_array(results_array_ci, json_map_ci)
     filter_results_and_print(results_array_mapped_ci, asset_ci)
   when /CRQ/
-    asset_crq           = a.to_s
+    asset_crq = a.to_s
     
     # download cache maps
-    download_cache("https://#{remedy_host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc", monster)
-    json_map_crq        = create_json_map("9d0040dc") 
+    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:change_request][:path]}?cacheid=#{cache_urls[:change_request][:cache_id]}", monster)
+    json_map_crq                  = create_json_map("9d0040dc") 
     
     #search & check result
-    crq_res_out         = search_crq_asset(sToken, monster, remedy_host, asset_crq)
-    check_remedy_result(ci_res_out, sToken, monster)
+    crq_res_out                   = search_crq_asset(sToken, monster, remedy_uri, asset_crq)
+    check_remedy_result(ci_res_out, sToken, monster, remedy_uri)
     
     # display result
-    results_array_crq   = get_array_from_response_crq(crq_res_out.remove_non_ascii)
-    results_array_mapped_crq = map_results_array(results_array_crq, json_map_crq)
+    results_array_crq             = get_array_from_response_crq(crq_res_out.remove_non_ascii)
+    results_array_mapped_crq      = map_results_array(results_array_crq, json_map_crq)
     filter_results_and_print(results_array_mapped_crq, asset_crq)
   else
-    puts "Usage:    #{__FILE__} <Incident Ref> <Asset CID> <Change Request ID>\n"
-    puts "Example:  #{__FILE__} INC000015912345 itgsydsrv475 CRQ000000229890"
+    usage
   end
 }
 
