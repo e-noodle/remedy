@@ -43,7 +43,7 @@ $ sudo gem install cookiejar
 2. Update config.yaml:
 ```
 ---
-remedy_host: 'remedy7prd.internal.company.com'
+remedy_url: 'https://remedy7prd.internal.company.com'
 user_account: 'remedy_userid'
 user_password: 'encryptedsecret'
 #user_passwd_enc: false # true by default
