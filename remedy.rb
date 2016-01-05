@@ -61,7 +61,7 @@ user_password = env_config['user_password']
 cache_urls = { 
    :incident         => { :cache_id => '5bf31a2a', :path => '/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/' },
    :asset            => { :cache_id => 'afb483',   :path => '/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/' },
-   :change_request   => { :cache_id => '9d0040dc'  :path => '/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/' },
+   :change_request   => { :cache_id => '9d0040dc', :path => '/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/' },
    :override         => { :cache_id => 'fb8677ad', :path => '/arsys/forms/remedy7prd-arsys/AR+System+Customizable+Home+Page/Default+Administrator+View/' }
 }
 
@@ -190,7 +190,7 @@ def search_crq_asset(sToken, monster, remedy_uri, crq)
         'Connection'                => 'keep-alive',
         'Content-type'              => 'text/plain; charset=UTF-8',
         'Host'                      => remedy_uri.host,
-        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_urihost}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
+        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
         'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
     }
         
@@ -248,7 +248,7 @@ def search_ci_asset(sToken, monster, remedy_uri, asset)
         'Connection'                => 'keep-alive',
         'Content-type'              => 'text/plain; charset=UTF-8',
         'Host'                      => remedy_uri.host,
-        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
+        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
         'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
     }
 
@@ -312,7 +312,7 @@ def search_incident(sToken, monster, remedy_uri, incident)
     
     headers_defaults = {  
         'Origin'                  => "#{remedy_uri.scheme}://#{remedy_uri.host}",
-        'Host'                    => remedy_host,
+        'Host'                    => remedy_uri.host,
         'Accept-Encoding'         => 'gzip, deflate',
         'Accept-Language'         => 'en-US,en;q=0.8',
         'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
@@ -486,7 +486,7 @@ end
 
 # check login to remedy
 
-login_url                   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/shared/login.jsp?/arsys/home/"
+login_url                   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/shared/login.jsp?/arsys/home/"
 login_uri                   = URI(login_url)
 
 monster                     = CookieMonster.new
@@ -511,7 +511,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
 
     # attempt to login with user account web form
 
-    user_login_url                   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/servlet/LoginServlet"
+    user_login_url                   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/servlet/LoginServlet"
     user_login_uri                   = URI(user_login_url)
     user_login_https                 = Net::HTTP.new(user_login_uri.host, user_login_uri.port)
     user_login_https.use_ssl         = true
@@ -521,7 +521,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
 
     user_login_request_header = {
         'Cookie'                        => monster.get_cookie_header(user_login_uri),
-        'Origin'                        => "https://#{remedy_host}",
+        'Origin'                        => "https://#{remedy_uri.host}",
         'Host'                          => user_login_uri.host,
         'Accept-Encoding'               => 'gzip, deflate, sdch',
         'Accept-Language'               =>'en-US,en;q=0.8',
@@ -530,7 +530,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
         'Content-Type'                  => 'application/x-www-form-urlencoded',
         'Accept'                        => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Cache-Control'                 =>'max-age=0',
-        'Referer'                       => "#{remedy_uri.scheme}://#{remedy_host}/arsys/shared/login.jsp?/arsys/",
+        'Referer'                       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/shared/login.jsp?/arsys/",
         'Connection'                    => 'keep-alive',
     }
 
@@ -604,8 +604,8 @@ session.get_session_id if session.session_id.nil?
 if session.session_id.nil?
 
     token_headers = {   
-        'Origin'                  => "https://#{remedy_host}",
-        'Host'                    => remedy_host,
+        'Origin'                  => "https://#{remedy_uri.host}",
+        'Host'                    => remedy_uri.host,
         'Accept-Encoding'         => 'gzip, deflate',
         'Accept-Language'         => 'en-US,en;q=0.8',
         'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
@@ -613,7 +613,7 @@ if session.session_id.nil?
     }
     
     sToken      = nil
-    token_url   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
+    token_url   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
 
     handle      = Url.new
     resp_t      = handle.get(token_url, token_headers , monster )
@@ -650,7 +650,7 @@ ARGV.each{|a|
     incident = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:incident][:path]}?cacheid=#{cache_urls[:incident][:cache_id]}", monster) 
+    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:incident][:path]}?cacheid=#{cache_urls[:incident][:cache_id]}", monster) 
     json_map_inc                   = create_json_map( cache_urls[:incident][:cache_id] )
     
     #search & check result
@@ -666,7 +666,7 @@ ARGV.each{|a|
     asset_ci = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}", monster) 
+    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}", monster) 
     json_map_ci                   = create_json_map( cache_urls[:asset][:cache_id] )
     
     #search & check result
@@ -680,8 +680,8 @@ ARGV.each{|a|
     asset_crq = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:change_request][:path]}?cacheid=#{cache_urls[:change_request][:cache_id]}", monster)
-    json_map_crq                  = create_json_map("9d0040dc") 
+    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:change_request][:path]}?cacheid=#{cache_urls[:change_request][:cache_id]}", monster)
+    json_map_crq                  = create_json_map(cache_urls[:change_request][:cache_id]) 
     
     #search & check result
     crq_res_out                   = search_crq_asset(sToken, monster, remedy_uri, asset_crq)
