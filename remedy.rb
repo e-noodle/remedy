@@ -78,6 +78,21 @@ cache_urls = {
    :override         => { :cache_id => 'fb8677ad', :path => '/arsys/forms/remedy7prd-arsys/AR+System+Customizable+Home+Page/Default+Administrator+View/' }
 }
 
+headers_defaults = {  
+    'Origin'                  => "#{remedy_uri.scheme}://#{remedy_uri.host}",
+    'Host'                    => remedy_uri.host,
+    'Accept-Encoding'         => 'gzip, deflate',
+    'Accept-Language'         => 'en-US,en;q=0.8',
+    'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
+    'Connection'              => 'keep-alive'
+}
+
+search_request_headers = {  
+    'Content-type'            => "text/plain; charset=UTF-8",
+    'Accept'                  => '*/*',
+    'AtssoRedirectStatusCode' => 278       
+}
+
 ##########################################
 # functions
 ##########################################
@@ -182,187 +197,78 @@ def create_json_map(cache_id)
     return json_map
 end
 
+def search_item(sToken, monster, remedy_uri, headers = {}, default_headers = {}, data_post_data, search_item, smethod)
 
-def search_crq_asset(sToken, monster, remedy_uri, crq)
+    search_inc_url    = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
+    search_inc_uri    = URI(search_inc_url)  
+    timestamp_ms      = (Time.now.to_f * 1000).to_i
+    url_tool          = Url.new
 
-    timestamp_ms  = (Time.now.to_f * 1000).to_i
-    data          = "502/GetQBETableEntryList/16/remedy7prd-arsys33/CHG:Infrastructure Change Classic17/Default User View4/102016/remedy7prd-arsys33/CHG:Infrastructure Change Classic0/1/01/02/0/0/2/0/2/0/2/0/65/6/7/30006007/30034008/100000019/3012669009/30172560010/100000018276/6/3/CRQ9/BMC.ASSET25/CHG:Infrastructure Change3/CRQ5/0 Yes15/${CRQ}20/6/1/41/41/41/41/61/40/9/3999900881/013/${timestamp_ms}27/Change ID*+=${CRQ}25/2/8/1000000110/100000018248/2/25/CHG:Infrastructure Change15/${CRQ}2/0/2/0/"
-    param         = data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${CRQ}", crq.to_s).gsub("${STOKEN_UID}", sToken)
-   
-    search_crq_data         = {
-      'param'  => param,
-      'sToken' => sToken,
-    }   
-
-    search_crq_headers = {
-        'Accept'                    => '*/*',
-        'Accept-Encoding'           => 'gzip, deflate, sdch',
-        'Accept-Language'           => 'en-US,en;q=0.8',
-        'AtssoRedirectStatusCode'   => 278,
-        'AtssoReturnLocation'       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
-        'Connection'                => 'keep-alive',
-        'Content-type'              => 'text/plain; charset=UTF-8',
-        'Host'                      => remedy_uri.host,
-        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/CHG%3AInfrastructure+Change+Classic/Default+User+View/?cacheid=9d0040dc",
-        'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
-    }
-        
-    search_crq_headers.reject!{ |k,v| k.to_s == 'Cookie' }
-    search_crq_url                          = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
-    search_crq_uri                          = URI(search_crq_url)
-    search_crq_https                        = Net::HTTP.new(search_crq_uri.host, search_crq_uri.port)
-    search_crq_https.use_ssl                = true
-    search_crq_https.verify_mode            = OpenSSL::SSL::VERIFY_NONE
-    
-    # replacement for: search_crq_uri.query = "param=#{URI.encode_www_form(search_crq_data['param'])}&sToken=#{sToken}"
-    search_crq_uri.query                    = URI.encode_www_form(search_crq_data)
-    search_crq_request                      = Net::HTTP::Get.new(search_crq_uri.request_uri)
-    search_crq_request_header               = {}
-    search_crq_request_header['Cookie']     = monster.get_cookie_header(search_crq_uri)
-
-    # add headers to the request
-      
-    search_crq_request_header.each {  |header,value| search_crq_request["#{header}"] = "#{value}" }
-    search_crq_headers.each{ |k,v| search_crq_request[k] = v }
-     
-    search_crq_request['Content-Type']      = 'text/plain; charset=UTF-8'
-
-    logs = ""
-    search_crq_https.set_debug_output(logs)
-    search_crq_response = search_crq_https.request(search_crq_request)
-    logger(logs)
-
-    monster.get_response_cookies(search_crq_response, search_crq_uri, monster.jar)
-    monster.save_cookies
-    
-    return Url.new.process_http_response(search_crq_response)
-
-end
-
-
-def search_ci_asset(sToken, monster, remedy_uri, asset)
-
-    timestamp_ms  = (Time.now.to_f * 1000).to_i
-    data      = %q[344/GetQBETableEntryList/16/remedy7prd-arsys18/AST:ComputerSystem10/Management4/102016/remedy7prd-arsys18/AST:ComputerSystem0/1/01/02/0/0/2/0/2/0/2/0/59/5/7/30001009/2000000209/40012740010/100000512410/100000512563/5/18/BMC_COMPUTERSYSTEM12/${CI_ASSET}9/BMC.ASSET5/180005/1800017/5/1/41/41/41/71/70/9/3009073001/013/${timestamp_ms}0/2/0/2/0/2/0/2/0/]
-    param       = data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${CI_ASSET}", asset).gsub("${STOKEN_UID}", sToken)
-
-    search_ci_data        = {
-      'param'  => param,
-      'sToken' => sToken,
-    }   
-
-    search_ci_headers = {
-        
-        'Accept'                    => '*/*',
-        'Accept-Encoding'           => 'gzip, deflate, sdch',
-        'Accept-Language'           => 'en-US,en;q=0.8',
-        'AtssoRedirectStatusCode'   => '278',
-        'AtssoReturnLocation'       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
-        'Connection'                => 'keep-alive',
-        'Content-type'              => 'text/plain; charset=UTF-8',
-        'Host'                      => remedy_uri.host,
-        'Referer'                   => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/?cacheid=afb483",
-        'User-Agent'                => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
-    }
-
-    search_ci_headers.reject!{ |k,v| k.to_s == 'Cookie' }
-    search_ci_url                           = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
-    search_ci_uri                           = URI(search_ci_url)
-    search_ci_https                         = Net::HTTP.new(search_ci_uri.host, search_ci_uri.port)
-    search_ci_https.use_ssl                 = true
-    search_ci_https.verify_mode             = OpenSSL::SSL::VERIFY_NONE
-    search_ci_uri.query                     = "param=#{search_ci_data['param']}&sToken=#{sToken}"
-    search_ci_request                       = Net::HTTP::Get.new(search_ci_uri.request_uri)
-    search_ci_request_header                = {}
-    search_ci_request_header['Cookie']      = monster.get_cookie_header(search_ci_uri)
-
-    # add headers to the request
-      
-    search_ci_request_header.each {  |header,value| search_ci_request["#{header}"] = "#{value}" }
-    search_ci_headers.each{ |k,v| search_ci_request[k] = v }
-     
-    search_ci_request['Content-Type'] = 'text/plain; charset=UTF-8'
-
-    logs = ""
-    search_ci_https.set_debug_output(logs)
-    search_ci_response = search_ci_https.request(search_ci_request)
-    logger(logs)
-    
-    monster.get_response_cookies(search_ci_response, search_ci_uri, monster.jar)
-    monster.save_cookies
-    
-    return Url.new.process_http_response(search_ci_response)
-end
-
-
-def search_incident(sToken, monster, remedy_uri, incident)
-
-    inc_number                  = incident
-    search_inc_request_headers  = {}
-    data_sToken                 = sToken unless sToken.nil?
-    timestamp_ms                = (Time.now.to_f * 1000).to_i
-
-    # build url and payload
-
-    data_post_data    = %q[1848/GetQBETableEntryList/16/remedy7prd-arsys21/HPD:Help Desk Classic17/Default User View4/102016/remedy7prd-arsys21/HPD:Help Desk Classic0/1/01/09/2/1/02/-10/2/0/2/0/2/0/268/23/7/30009007/30034009/3012669009/3012670009/3012907009/3012910009/3013986009/3013989009/3013990009/3027964009/3028313009/3030216009/3034976009/3035300009/30405100010/100000016110/100000039710/100000039810/100000068710/100000068810/100000368410/100000512410/10000051251280/23/3/INC9/BMC.ASSET15/${inc_number}3/INC25/AST:AssetPeople_AssetBase29/AST:CMDBAssoc CI UA CMDBAssoc24/8000 General Information4/1 No10/0 Internal9/1087776007/0 Never5/1 Yes15/Internet E-mail15/Internet E-mail993/ AND ( ('112' LIKE "%;1000001591;%") OR ('112' LIKE "%;1000001590;%") OR ('112' LIKE "%;1000001268;%") OR ('112' LIKE "%;812;%") OR ('112' LIKE "%;20020;%") OR ('112' LIKE "%;20032;%") OR ('112' LIKE "%;20012;%") OR ('112' LIKE "%;1000000834;%") OR ('112' LIKE "%;20004;%") OR ('112' LIKE "%;20302;%") OR ('112' LIKE "%;20031;%") OR ('112' LIKE "%;20502;%") OR ('112' LIKE "%;20007;%") OR ('112' LIKE "%;20003;%") OR ('112' LIKE "%;808;%") OR ('112' LIKE "%;20056;%") OR ('112' LIKE "%;20019;%") OR ('112' LIKE "%;20000;%") OR ('112' LIKE "%;20352;%") OR ('112' LIKE "%;1000000007;%") OR ('112' LIKE "%;20055;%") OR ('112' LIKE "%;14451;%") OR ('112' LIKE "%;20315;%") OR ('112' LIKE "%;802;%") OR ('112' LIKE "%;20354;%") OR ('112' LIKE "%;442;%") OR ('112' LIKE "%;440;%") OR ('112' LIKE "%;441;%") OR ('112' LIKE "%;13005;%") OR ('112' LIKE "%;20403;%") OR ('112' LIKE "%;20316;%") OR ('112' LIKE "%;20313;%") OR ('112' LIKE "%;13006;%") OR ('112' LIKE "%;804;%") OR ('112' LIKE "%;803;%"))15/${inc_number}1/01/35/180005/1800017/Default User View5/180005/1800072/23/1/41/41/41/41/41/41/61/61/61/71/61/61/41/41/41/41/21/21/71/71/41/71/70/9/3999900881/013/${timestamp_ms}0/2/0/2/0/2/0/2/0/]
-    param             = data_post_data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${inc_number}", inc_number).gsub("${STOKEN_UID}", data_sToken)
-
-    data = {
-          'param'  => param,
-          'sToken' => data_sToken,
-    }
-
-    # http connectors
-     
-    search_inc_url                   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
-    search_inc_uri                   = URI(search_inc_url)
-    search_inc_https                 = Net::HTTP.new(search_inc_uri.host, search_inc_uri.port)
-    search_inc_https.use_ssl         = true
-    search_inc_https.verify_mode     = OpenSSL::SSL::VERIFY_NONE
-    search_inc_request               = Net::HTTP::Post.new(search_inc_uri.path)
-
+    # post data
+    param             = data_post_data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${search_item}", search_item)
+    data              = { 'param' => param, 'sToken' => sToken }
     # set headers
+    headers['Cookie'] = monster.get_cookie_header(search_inc_uri)
+    default_headers.merge!(headers)
     
-    headers_defaults = {  
-        'Origin'                  => "#{remedy_uri.scheme}://#{remedy_uri.host}",
-        'Host'                    => remedy_uri.host,
-        'Accept-Encoding'         => 'gzip, deflate',
-        'Accept-Language'         => 'en-US,en;q=0.8',
-        'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
-        'Connection'              => 'keep-alive'
-    }
-
-    search_inc_request_headers_add = {  
-        'AtssoReturnLocation'     => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
-        'Content-type'            => "text/plain; charset=UTF-8",
-        'Accept'                  => '*/*',
-        'Accept-Language'         => 'en-US,en;q=0.8',
-        'User-Agent'              => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
-        'Referer'                 => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/?cacheid=5bf31a2a",
-        'AtssoRedirectStatusCode' => 278,
-        'Cookie'                  => monster.get_cookie_header(search_inc_uri)
-    }
-
-    search_inc_request_headers.merge!(headers_defaults)
-    search_inc_request_headers.merge!(search_inc_request_headers_add)
-    search_inc_request_headers.each{ |k,v| 
-        search_inc_request[k] = v 
-    }
-
-    # set body and calculate content-length
-    search_inc_request.body                 = "#{data['param']}&sToken=#{data['sToken']}"
-    search_inc_request['Content-Length']    = "#{search_inc_request.body.to_s.length}"
-
-    # submit request and log
-    logs = ""
-    search_inc_https.set_debug_output(logs)
-    search_inc_response = search_inc_https.request(search_inc_request)
-    logger(logs)
-
-    monster.get_response_cookies(search_inc_response, search_inc_url, monster.jar)
-    monster.save_cookies
+    case smethod
+    when /POST/     
+      search_inc_response = url_tool.postUrl_with_cookies(search_inc_url, monster, default_headers, data)
+      monster.get_response_cookies(search_inc_response, search_inc_url, monster.jar); monster.save_cookies     
+    else
+      search_inc_response = url_tool.getUrl_with_cookies(search_inc_url, monster, default_headers, data)
+      monster.get_response_cookies(search_inc_response, search_inc_url, monster.jar); monster.save_cookies
+    end
     
-    return Url.new.process_http_response(search_inc_response)
+    return url_tool.process_http_response(search_inc_response)   
+
+end
+
+def search_ci_asset(sToken, monster, remedy_uri, headers = {}, default_headers = {}, asset)
+
+    search_inc_url    = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
+    search_inc_uri    = URI(search_inc_url)  
+    timestamp_ms      = (Time.now.to_f * 1000).to_i
+    url_tool          = Url.new
+
+    # post data
+    data_post_data    = %q[344/GetQBETableEntryList/16/remedy7prd-arsys18/AST:ComputerSystem10/Management4/102016/remedy7prd-arsys18/AST:ComputerSystem0/1/01/02/0/0/2/0/2/0/2/0/59/5/7/30001009/2000000209/40012740010/100000512410/100000512563/5/18/BMC_COMPUTERSYSTEM12/${CI_ASSET}9/BMC.ASSET5/180005/1800017/5/1/41/41/41/71/70/9/3009073001/013/${timestamp_ms}0/2/0/2/0/2/0/2/0/]
+    param             = data_post_data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${CI_ASSET}", asset)
+    data              = { 'param' => param, 'sToken' => sToken }
+    # set headers
+    headers['Cookie'] = monster.get_cookie_header(search_inc_uri)
+    headers.merge!(default_headers)
+    # get response
+    search_inc_response = url_tool.postUrl_with_cookies(search_inc_url, monster, headers, data)
+    # set cookies
+    monster.get_response_cookies(search_inc_response, search_inc_url, monster.jar); monster.save_cookies
+    
+    return url_tool.process_http_response(search_inc_response)   
+
+end
+
+
+def search_incident(sToken, monster, remedy_uri, headers = {}, default_headers = {}, incident)
+
+    search_inc_url    = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/BackChannel/"
+    search_inc_uri    = URI(search_inc_url)
+    inc_number        = incident   
+    timestamp_ms      = (Time.now.to_f * 1000).to_i
+    url_tool          = Url.new
+
+    # post data
+    data_post_data    = %q[1848/GetQBETableEntryList/16/remedy7prd-arsys21/HPD:Help Desk Classic17/Default User View4/102016/remedy7prd-arsys21/HPD:Help Desk Classic0/1/01/09/2/1/02/-10/2/0/2/0/2/0/268/23/7/30009007/30034009/3012669009/3012670009/3012907009/3012910009/3013986009/3013989009/3013990009/3027964009/3028313009/3030216009/3034976009/3035300009/30405100010/100000016110/100000039710/100000039810/100000068710/100000068810/100000368410/100000512410/10000051251280/23/3/INC9/BMC.ASSET15/${inc_number}3/INC25/AST:AssetPeople_AssetBase29/AST:CMDBAssoc CI UA CMDBAssoc24/8000 General Information4/1 No10/0 Internal9/1087776007/0 Never5/1 Yes15/Internet E-mail15/Internet E-mail993/ AND ( ('112' LIKE "%;1000001591;%") OR ('112' LIKE "%;1000001590;%") OR ('112' LIKE "%;1000001268;%") OR ('112' LIKE "%;812;%") OR ('112' LIKE "%;20020;%") OR ('112' LIKE "%;20032;%") OR ('112' LIKE "%;20012;%") OR ('112' LIKE "%;1000000834;%") OR ('112' LIKE "%;20004;%") OR ('112' LIKE "%;20302;%") OR ('112' LIKE "%;20031;%") OR ('112' LIKE "%;20502;%") OR ('112' LIKE "%;20007;%") OR ('112' LIKE "%;20003;%") OR ('112' LIKE "%;808;%") OR ('112' LIKE "%;20056;%") OR ('112' LIKE "%;20019;%") OR ('112' LIKE "%;20000;%") OR ('112' LIKE "%;20352;%") OR ('112' LIKE "%;1000000007;%") OR ('112' LIKE "%;20055;%") OR ('112' LIKE "%;14451;%") OR ('112' LIKE "%;20315;%") OR ('112' LIKE "%;802;%") OR ('112' LIKE "%;20354;%") OR ('112' LIKE "%;442;%") OR ('112' LIKE "%;440;%") OR ('112' LIKE "%;441;%") OR ('112' LIKE "%;13005;%") OR ('112' LIKE "%;20403;%") OR ('112' LIKE "%;20316;%") OR ('112' LIKE "%;20313;%") OR ('112' LIKE "%;13006;%") OR ('112' LIKE "%;804;%") OR ('112' LIKE "%;803;%"))15/${inc_number}1/01/35/180005/1800017/Default User View5/180005/1800072/23/1/41/41/41/41/41/41/61/61/61/71/61/61/41/41/41/41/21/21/71/71/41/71/70/9/3999900881/013/${timestamp_ms}0/2/0/2/0/2/0/2/0/]
+    param             = data_post_data.gsub("${timestamp_ms}", timestamp_ms.to_s).gsub("${inc_number}", inc_number)
+    data              = { 'param' => param, 'sToken' => sToken }
+    # set headers
+    headers['Cookie'] = monster.get_cookie_header(search_inc_uri)
+    headers.merge!(default_headers)
+    # get response
+    search_inc_response = url_tool.postUrl_with_cookies(search_inc_url, monster, headers, data)
+    # set cookies
+    monster.get_response_cookies(search_inc_response, search_inc_url, monster.jar); monster.save_cookies
+    
+    return url_tool.process_http_response(search_inc_response)   
 
 end
 
@@ -490,21 +396,18 @@ login_uri                   = URI(login_url)
 
 monster                     = CookieMonster.new
 session                     = Session.new(user_account)
+url_tool = Url.new
+
+request_header_defaults = {
+    'User-Agent' => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
+}
 
 # check if a session already exists to reuse before attempting to login
 
 unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
 
-    # get cookies from login url
+    login_response = url_tool.get(login_url, request_header_defaults, monster)
     
-    login_https                 = Net::HTTP.new(login_uri.host,login_uri.port)
-    login_https.use_ssl         = true
-    login_https.verify_mode     = OpenSSL::SSL::VERIFY_NONE
-    login_https.set_debug_output(logs); logger(logs)
-    login_request               = Net::HTTP::Get.new(login_uri.path)
-    login_request['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
-
-    login_response            = login_https.request(login_request)
     monster.get_response_cookies(login_response, login_uri, monster.get_jar)
     monster.save_cookies
 
@@ -512,12 +415,6 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
 
     user_login_url                   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/servlet/LoginServlet"
     user_login_uri                   = URI(user_login_url)
-    user_login_https                 = Net::HTTP.new(user_login_uri.host, user_login_uri.port)
-    user_login_https.use_ssl         = true
-    user_login_https.verify_mode     = OpenSSL::SSL::VERIFY_NONE
-    user_login_request               = Net::HTTP::Post.new(user_login_uri.path)
-    user_login_request_header        = {}
-
     user_login_request_header = {
         'Cookie'                        => monster.get_cookie_header(user_login_uri),
         'Origin'                        => "https://#{remedy_uri.host}",
@@ -533,24 +430,10 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
         'Connection'                    => 'keep-alive',
     }
 
-    # add headers to the request
-      
-    user_login_request_header.each {  |header,value| 
-     user_login_request["#{header}"] = "#{value}" 
-    }
-    
-    user_login_request.set_form_data(login_data)
-
-    user_login_request['Content-Length']            =  "#{user_login_request.body.to_s.length}"
-
-
     # submit form and get response 
-    logs = ""
-    user_login_https.set_debug_output(logs)
-    user_login_response = user_login_https.request(user_login_request)
-
-    logger(logs)
+    user_login_response = postUrl_with_cookies(user_login_url, monster, user_login_request_header, login_data) 
     
+
     ###################
     # Follow Redirect
     ###################
@@ -638,11 +521,13 @@ ARGV.each{|a|
     incident = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:incident][:path]}?cacheid=#{cache_urls[:incident][:cache_id]}", monster) 
+    cache_url = "#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:incident][:path]}?cacheid=#{cache_urls[:incident][:cache_id]}"
+    download_cache(cache_url, monster) 
     json_map_inc                   = create_json_map( cache_urls[:incident][:cache_id] )
     
     #search & check result
-    inc_res_out                    = search_incident(sToken, monster, remedy_uri, incident) 
+    ['AtssoReturnLocation','Referer'].each{ |h| search_request_headers[h] = cache_url } 
+    inc_res_out                    = search_incident(sToken, monster, remedy_uri, search_request_headers, headers_defaults, incident) 
     check_remedy_result(inc_res_out, sToken, monster, remedy_uri)
     
     # display result
@@ -654,13 +539,16 @@ ARGV.each{|a|
     asset_ci = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}", monster) 
+    cache_url = "#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}"
+    download_cache(cache_url, monster) 
     json_map_ci                   = create_json_map( cache_urls[:asset][:cache_id] )
     
     #search & check result
-    ci_res_out                    = search_ci_asset(sToken, monster, remedy_uri, asset_ci)
+    ['AtssoReturnLocation','Referer'].each{ |h| search_request_headers[h] = cache_url }	
+    ci_res_out                    = search_ci_asset(sToken, monster, remedy_uri, search_request_headers, headers_defaults, asset_ci)
     check_remedy_result(ci_res_out, sToken, monster, remedy_uri)
     
+    # display result
     results_array_ci              = get_array_from_response(ci_res_out)
     results_array_mapped_ci       = map_results_array(results_array_ci, json_map_ci)
     filter_results_and_print(results_array_mapped_ci, asset_ci)
@@ -668,13 +556,15 @@ ARGV.each{|a|
     asset_crq = a.to_s
     
     # download cache maps
-    download_cache("#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:change_request][:path]}?cacheid=#{cache_urls[:change_request][:cache_id]}", monster)
+    cache_url = "#{remedy_uri.scheme}://#{remedy_uri.host}#{cache_urls[:change_request][:path]}?cacheid=#{cache_urls[:change_request][:cache_id]}"
+    download_cache(cache_url, monster)
     json_map_crq                  = create_json_map(cache_urls[:change_request][:cache_id]) 
     
     #search & check result
-    crq_res_out                   = search_crq_asset(sToken, monster, remedy_uri, asset_crq)
-    check_remedy_result(ci_res_out, sToken, monster, remedy_uri)
-    
+    data_post_data    = "502/GetQBETableEntryList/16/remedy7prd-arsys33/CHG:Infrastructure Change Classic17/Default User View4/102016/remedy7prd-arsys33/CHG:Infrastructure Change Classic0/1/01/02/0/0/2/0/2/0/2/0/65/6/7/30006007/30034008/100000019/3012669009/30172560010/100000018276/6/3/CRQ9/BMC.ASSET25/CHG:Infrastructure Change3/CRQ5/0 Yes15/${search_item}20/6/1/41/41/41/41/61/40/9/3999900881/013/${timestamp_ms}27/Change ID*+=${search_item}25/2/8/1000000110/100000018248/2/25/CHG:Infrastructure Change15/${search_item}2/0/2/0/"
+    ['AtssoReturnLocation','Referer'].each{ |h| search_request_headers[h] = cache_url }	
+    crq_res_out = search_item(sToken, monster, remedy_uri, search_request_headers, headers_defaults, data_post_data, asset_crq, "GET")
+
     # display result
     results_array_crq             = get_array_from_response_crq(crq_res_out.remove_non_ascii)
     results_array_mapped_crq      = map_results_array(results_array_crq, json_map_crq)

@@ -3,20 +3,16 @@ class Url
     attr_accessor :max_attempts, :attempts, :user_agent, :headers_defaults 
 
     # Create an instance of this class
-    def initialize 
+    def initialize
         @attempts       = 0
         @max_attempts   = 30        
         @headers_defaults = {   
-            'Origin'            => "https://#{remedy_host}",
-            'Host'              => remedy_host,
             'Accept-Encoding'   => 'gzip, deflate',
             'Accept-Language'   => 'en-US,en;q=0.8',
             'User-Agent'        => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
             'Connection'        => 'keep-alive'
         }
-        @user_agent             = @headers_defaults['User-Agent']
-        
-        
+        @user_agent             = @headers_defaults['User-Agent']  
     end
  
     def process_http_response response
@@ -46,7 +42,7 @@ class Url
 
     end
  
-    def getUrl_with_cookies(get_url, cookie_monster, get_request_headers = nil) 
+    def getUrl_with_cookies(get_url, cookie_monster, get_request_headers = nil, get_body = nil) 
 
     
         logs = ""
@@ -60,17 +56,22 @@ class Url
             get_https.verify_mode   = OpenSSL::SSL::VERIFY_NONE
         end
         
-        get_https.set_debug_output(logs); logger(logs)
+        get_https.set_debug_output(logs); 
         
-        get_request               = Net::HTTP::Get.new(get_uri.path)
-        get_request_headers.merge!(@headers_defaults)
-        get_request.initialize_http_header(get_request_headers)
+        if not get_body.nil?
+            get_uri.query         = URI.encode_www_form(get_body)
+        end		
         
-        get_request['Cookie']     = cookie_monster.get_cookie_header(get_uri)
+        get_request               = Net::HTTP::Get.new(get_uri.request_uri)
+  
+        get_header = {}
+        get_header['Cookie']     = cookie_monster.get_cookie_header(get_uri)
         
-        
-        
+        get_header.each {  |header,value| get_request["#{header}"] = "#{value}" }
+        get_request_headers.each{ |k,v| get_request[k] = "#{v}" }
+
         get_response  = get_https.request(get_request)
+        #get_request.each_header{|h|puts "#{h}: #{get_request[h]}"}
         logger(logs)
 
         cookie_monster.get_response_cookies(get_response, get_uri, cookie_monster.jar)
@@ -80,7 +81,7 @@ class Url
     end
  
   
-    def postUrl_with_cookies(post_url, cookie_monster, post_request_headers = nil) 
+    def postUrl_with_cookies(post_url, cookie_monster, post_request_headers = nil, post_body = nil ) 
 
         post_url               = post_url
         post_uri               = URI(post_url)
@@ -92,8 +93,6 @@ class Url
         end
   
         post_request           = Net::HTTP::Post.new(post_uri.path)
-        
-        post_request_headers.merge!(@headers_defaults)
         unless post_request_headers.nil?
             post_request_headers.each{ |k,v| post_request[k] = v }   
         end   
@@ -101,7 +100,12 @@ class Url
         # add cookies / todo: post from session
         
         post_request['Cookie'] = cookie_monster.get_cookie_header(post_uri)
-
+        
+        if not post_body.nil?
+            post_request.body="#{post_body['param']}&sToken=#{post_body['sToken']}"
+            post_request['Content-Length'] = post_request.body.to_s.length
+        end
+    
         logs = ""
         post_https.set_debug_output(logs)
         
@@ -116,78 +120,74 @@ class Url
     end
   
   
-    def get(url, headers, cookie_monster)
+    def get(get_url, get_request_headers, cookie_monster, request_body = false)
  
-        return nil if url.nil?    
+        return nil if get_url.nil?    
         
         found     = false
         attempts  = 0 
-        resp      = nil       
-        uri       = URI(url)
+        get_response  = nil       
+        get_uri       = URI(get_url)
         
 
         until( found || attempts >= @max_attempts)
              
-            attempts            += 1
-            
-            
-            http                = Net::HTTP.new(uri.host,uri.port)
-            http.open_timeout   = 10
-            http.read_timeout   = 10
-            
-            path                = uri.path
-            path                = "/" if path == ""
-            path                = "#{path}?#{uri.query}" unless uri.query.nil?
-          
-          
-            req = Net::HTTP::Get.new(path,{'User-Agent' => @user_agent}) 
-            
-            if uri.instance_of? URI::HTTPS
-                http.use_ssl      = true
-                http.verify_mode  = OpenSSL::SSL::VERIFY_NONE
+            attempts            	+= 1
+            get_http                = Net::HTTP.new(get_uri.host,get_uri.port)
+            get_http.open_timeout   = 10
+            get_http.read_timeout   = 10
+            if get_uri.instance_of? URI::HTTPS
+                get_http.use_ssl      = true
+                get_http.verify_mode  = OpenSSL::SSL::VERIFY_NONE
             end 
-          
-            headers['Cookie'] = cookie_monster.get_cookie_header(uri)           
+           
+            get_path                = get_uri.path
+            get_path                = "/" if get_path == ""
+            get_path                = "#{get_path}?#{get_uri.query}" unless get_uri.query.nil?
+            
+            get_request = Net::HTTP::Get.new(get_path,{'User-Agent' => @user_agent}) 
+            
+            get_request_headers['Cookie'] = cookie_monster.get_cookie_header(get_uri)           
 
-            req.initialize_http_header(headers)
-            resp = http.request(req)
+            get_request.initialize_http_header(get_request_headers)
+            get_response 			  = get_http.request(get_request)
             
             #resp = self.getUrl_with_cookies("https://"+uri.host+path, cookie_monster, headers) 
              
-            case resp
+            case get_response
             when Net::HTTPSuccess
-                if resp.code == "200"
-                    page = process_http_response(resp)        
-                    IO.write("?#{uri.query}", page) unless page.nil?    
-                    resp.header['Referer'] = uri.to_s              
-                    return resp                
+                if get_response.code == "200"
+                    page = process_http_response(get_response)        
+                    IO.write("?#{get_uri.query}", page) unless page.nil?    
+                    get_response.header['Referer'] = get_uri.to_s
+                    found = true					
+                    #return resp                
                 end
             when Net::HTTPRedirection
                 
-                if (resp.header['location'] != nil)          
-                    newurl = URI.parse(resp.header['location'])               
+                if (get_response.header['location'] != nil)          
+                    newurl = URI.parse(get_response.header['location'])               
                     
                     if(newurl.relative?)
-                        newurl = url+resp.header['location']
+                        newurl = url+get_response.header['location']
                     end   
 
-                    if File.exists?("?#{uri.query}")
-                      file = File.stat "?#{uri.query}"
-                      headers['If-Modified-Since']  = file.mtime.rfc2822
+                    if File.exists?("?#{get_uri.query}")
+                      file = File.stat "?#{get_uri.query}"
+                      get_request_headers['If-Modified-Since']  = file.mtime.rfc2822
                     end
                     
-                    headers['Referer'] = uri.to_s
-                    uri = URI(newurl)
+                    get_request_headers['Referer'] = get_uri.to_s
+                    get_uri = URI(newurl)
     
                 end
             else
                 found = true #resp was 404, etc
-                #logger(logs)
             end
       
         
         end #until
         
-        return resp   
+        return get_response   
     end
 end
