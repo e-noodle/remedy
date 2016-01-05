@@ -10,6 +10,7 @@ This script was based on the VuGen scripting for BMC Remedy Action Request Syste
 #### Requires
 
 * CookieJar
+* Nokogiri
 * Ruby 1.9.3
 * Tested on BMC Remedy 7.1 
 
@@ -17,7 +18,7 @@ This script was based on the VuGen scripting for BMC Remedy Action Request Syste
 
 * does *not* require access to the Remedy API endpoint 
 * does *not* require a priviledged user acccount
-* has minimal dependencies
+* minimal dependencies
 
 
 #### Disadvantages 

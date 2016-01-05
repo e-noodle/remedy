@@ -58,6 +58,19 @@ remedy_host   = remedy_uri.host
 user_account  = env_config['user_account']
 user_password = env_config['user_password']
 
+login_data = {
+    'username'     => user_account,
+    'pwd'          => user_password,
+    'auth'         => '',
+    'timezone'     => 'AET',
+    'encpwd'       => '1',
+    'goto'         => '',
+    'server'       => '',
+    'ipoverride'   => '0',
+    'initialState' => '0',
+    'returnBack'   => '/arsys/',
+}
+
 cache_urls = { 
    :incident         => { :cache_id => '5bf31a2a', :path => '/arsys/forms/remedy7prd-arsys/HPD%3AHelp+Desk+Classic/Default+User+View/' },
    :asset            => { :cache_id => 'afb483',   :path => '/arsys/forms/remedy7prd-arsys/AST%3AComputerSystem/Management/' },
@@ -465,20 +478,6 @@ class String
     end
 end
 
-def fix_encoding(s)
-    # See String#encode
-    encoding_options = {
-        :invalid                     => :replace,  # Replace invalid byte sequences
-        :undef                       => :replace,  # Replace anything not defined in ASCII
-        :replace                     => '',        # Use a blank for those replacements
-        :UNIVERSAL_NEWLINE_DECORATOR => true       # Always break lines with \n
-    }
-    s.encode(Encoding.find('ASCII'), encoding_options)
-    return s
-end
-    
-
-
 ################
 # main routine
 ################
@@ -524,12 +523,12 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
         'Origin'                        => "https://#{remedy_uri.host}",
         'Host'                          => user_login_uri.host,
         'Accept-Encoding'               => 'gzip, deflate, sdch',
-        'Accept-Language'               =>'en-US,en;q=0.8',
+        'Accept-Language'               => 'en-US,en;q=0.8',
         'Upgrade-Insecure-Requests'     => '1',
         'User-Agent'                    => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
         'Content-Type'                  => 'application/x-www-form-urlencoded',
         'Accept'                        => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Cache-Control'                 =>'max-age=0',
+        'Cache-Control'                 => 'max-age=0',
         'Referer'                       => "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/shared/login.jsp?/arsys/",
         'Connection'                    => 'keep-alive',
     }
@@ -540,18 +539,7 @@ unless monster.get_cookie_header(login_uri).match(/.*SESSION.*/)
      user_login_request["#{header}"] = "#{value}" 
     }
     
-    user_login_request.set_form_data({
-        'username'     => user_account,
-        'pwd'          => user_password,
-        'auth'         => '',
-        'timezone'     => 'AET',
-        'encpwd'       => '1',
-        'goto'         => '',
-        'server'       => '',
-        'ipoverride'   => '0',
-        'initialState' => '0',
-        'returnBack'   => '/arsys/',
-    })
+    user_login_request.set_form_data(login_data)
 
     user_login_request['Content-Length']            =  "#{user_login_request.body.to_s.length}"
 
@@ -613,7 +601,7 @@ if session.session_id.nil?
     }
     
     sToken      = nil
-    token_url   = "#{remedy_uri.scheme}://#{remedy_uri.host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
+    token_url   = "#{remedy_uri.scheme}://#{remedy_host}/arsys/forms/remedy7prd-arsys/SHR:OverviewConsole/Overview%20Homepage%20Content/udd.js?format=html&w=&"
 
     handle      = Url.new
     resp_t      = handle.get(token_url, token_headers , monster )
