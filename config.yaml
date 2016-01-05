@@ -1,0 +1,5 @@
+---
+remedy_url: https://remedy7prd.internal.acme.com
+user_account: remedy_user
+user_password: encrypted_remedy_secret
+#user_passwd_enc: false # true by default
