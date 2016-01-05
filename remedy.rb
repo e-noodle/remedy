@@ -667,7 +667,7 @@ ARGV.each{|a|
     
     # download cache maps
     download_cache("#{remedy_uri.acheme}://#{remedy_host}#{cache_urls[:asset][:path]}?cacheid=#{cache_urls[:asset][:cache_id]}", monster) 
-    json_map_ci                   = reate_json_map( cache_urls[:asset][:cache_id] )
+    json_map_ci                   = create_json_map( cache_urls[:asset][:cache_id] )
     
     #search & check result
     ci_res_out                    = search_ci_asset(sToken, monster, remedy_uri, asset_ci)
